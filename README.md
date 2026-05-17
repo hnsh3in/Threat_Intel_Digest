@@ -155,6 +155,14 @@ Threat_Intel_Digest/
 ├── README.md                          # This file
 ├── SETUP.md                           # Deployment and configuration guide
 ├── FEEDS.md                           # Feed list with notes
+├── samples/                           # Sample output screenshots
+│   ├── README.md                      # Rendered sample gallery
+│   ├── discord_digest.png
+│   ├── discord_crawl_failure.png
+│   ├── email_digest.png
+│   ├── email_crawl_failure.png
+│   ├── gsheet_triage_audit.png
+│   └── gsheet_feed_noise_analysis_chart.png
 └── workflow/
     └── Threat_Intel_Digest_Published_v1.0.json   # n8n workflow export (sanitised)
 ```
