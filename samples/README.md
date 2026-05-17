@@ -34,8 +34,16 @@ When a feed fails to fetch (connection timeout, bot block, HTTP error), the erro
 
 ---
 
+## Audit Log — Triage Audit Raw Data
+
+Every item processed by the pipeline is logged to Google Sheets with verdict (`PASSED` / `REJECTED`), triage score, category, reason, feed name, and link. This raw audit data is used for threshold calibration and feed quality analysis.
+
+![Triage Audit](gsheet_triage_audit.png)
+
+---
+
 ## Audit Log — Feed Noise Analysis
 
-Google Sheets audit log after several weeks of runs. Every item processed is logged with verdict (`PASSED` / `REJECTED`), triage score, category, and reason. This view is a summary chart built on top of the raw audit data — used to calibrate triage thresholds and identify noisy feeds.
+Summary chart built on top of the raw audit data. Shows pass rate, reject rate, and average score per feed — used to identify high-noise feeds and calibrate the triage threshold over time.
 
 ![Feed Noise Analysis](gsheet_feed_noise_analysis_chart.png)
