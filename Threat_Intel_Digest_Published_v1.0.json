@@ -1,0 +1,1215 @@
+{
+  "name": "Threat Intel Digest - Published 1.0",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 0 0,12 * * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -352,
+        64
+      ],
+      "id": "65ba689b-868e-49b9-92d7-4572991a8365",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"feeds\": [\n    { \"name\": \"The Hacker News\", \"url\": \"https://feeds.feedburner.com/TheHackersNews\" },\n    { \"name\": \"Rapid7 Blog\", \"url\": \"https://blog.rapid7.com/rss\" },\n    { \"name\": \"Dark Reading\", \"url\": \"https://www.darkreading.com/rss.xml\" },\n    { \"name\": \"BankInfoSecurity\", \"url\": \"https://www.bankinfosecurity.com/rssFeeds.php?type=main\" },\n    { \"name\": \"Palo Alto Unit 42\", \"url\": \"https://unit42.paloaltonetworks.com/feed\" },\n    { \"name\": \"Malwarebytes Blog\", \"url\": \"https://blog.malwarebytes.com/feed/\" },\n    { \"name\": \"Microsoft Security Blog\", \"url\": \"https://www.microsoft.com/en-us/security/blog/feed/\" },\n    { \"name\": \"Krebs on Security\", \"url\": \"https://krebsonsecurity.com/feed\" },\n    { \"name\": \"SANS ISC\", \"url\": \"https://isc.sans.edu/rssfeed.xml\" },\n    { \"name\": \"Fortiguard IR\", \"url\": \"https://www.fortiguard.com/rss/ir.xml\" },\n    { \"name\": \"Recorded Future\", \"url\": \"https://www.recordedfuture.com/feed\" },\n    { \"name\": \"Cisco Talos\", \"url\": \"https://feeds.feedburner.com/feedburner/Talos\" },\n    { \"name\": \"Malware Traffic Analysis\", \"url\": \"https://www.malware-traffic-analysis.net/blog-entries.rss\" },\n{ \"name\": \"CISA ICS Advisories\", \"url\": \"https://www.cisa.gov/uscert/ics/advisories/advisories.xml\" },\n    { \"name\": \"Bleeping Computer\", \"url\": \"https://www.bleepingcomputer.com/feed/\" },\n    { \"name\": \"The DFIR Report\", \"url\": \"https://thedfirreport.com/feed/\" },\n    { \"name\": \"JPCERT/CC\", \"url\": \"https://blogs.jpcert.or.jp/en/atom.xml\" },\n    { \"name\": \"Elastic Security Labs\", \"url\": \"https://www.elastic.co/security-labs/rss/feed.xml\" },\n    { \"name\": \"CrowdStrike Blog\", \"url\": \"https://www.crowdstrike.com/en-us/blog/feed\" },\n    { \"name\": \"SentinelOne Labs\", \"url\": \"https://www.sentinelone.com/labs/feed/\" },\n    { \"name\": \"Red Canary\", \"url\": \"https://redcanary.com/feed\" }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -128,
+        64
+      ],
+      "id": "dfabcf0b-fcca-4cbf-9599-33b8e899cb1a",
+      "name": "RSS Feed List (EF)"
+    },
+    {
+      "parameters": {
+        "jsCode": "const feeds = $input.first().json.feeds;\n\nreturn feeds.map(feed => ({\n  json: {\n    name: feed.name,\n    url: feed.url\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        64
+      ],
+      "id": "eddeb6a1-9a1b-4f9e-9b0e-ddb4aaf1f77b",
+      "name": "Split Feed Array (CJS)"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        544,
+        64
+      ],
+      "id": "9116bda8-a9a9-47ba-a49b-9dfa55723fbc",
+      "name": "Loop Feeds (SIB)"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        768,
+        -272
+      ],
+      "id": "256eb2e6-20c8-4970-ab4f-d93f0b7c0c33",
+      "name": "Fetch RSS Items (RSSR)",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "amount": 2
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2784,
+        -176
+      ],
+      "id": "85945423-e653-4f78-b063-bbb8149033d1",
+      "name": "Rate Limit Delay (W)",
+      "webhookId": "YOUR_WEBHOOK_CALLBACK_ID"
+    },
+    {
+      "parameters": {
+        "operation": "removeItemsSeenInPreviousExecutions",
+        "dedupeValue": "=={{ $json.link }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.removeDuplicates",
+      "typeVersion": 2,
+      "position": [
+        3680,
+        -32
+      ],
+      "id": "856b0da9-2f53-4301-9d77-0a26c97a41b7",
+      "name": "Deduplicate by Link (RD)"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "items",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        3904,
+        -32
+      ],
+      "id": "de733792-591c-44e5-b6a6-90c56dfe607a",
+      "name": "Aggregate Items"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://discordapp.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ ({ \"content\": $json.discord_message }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        5920,
+        16
+      ],
+      "id": "35012773-0bc4-4f56-8230-e48ae4a6f543",
+      "name": "Discord Webhook (HTTP)",
+      "onError": "continueRegularOutput",
+      "notes": "Discord Issue"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.payload }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        5248,
+        64
+      ],
+      "id": "3a8379c4-07b7-47d2-b714-f8351b341bc1",
+      "name": "Claude Summarize (HTTP)",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Claude API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "your-email@example.com",
+        "subject": "={{ $json.email_subject }}",
+        "message": "={{ $json.email_body }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        5696,
+        -80
+      ],
+      "id": "da3206a0-0512-400d-9852-f396e0416bdf",
+      "name": "Send a message",
+      "webhookId": "YOUR_WEBHOOK_CALLBACK_ID",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Gmail account"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "notes": "OAuth Issue"
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nlet text = response.content[0].text;\n\ntext = text.replace(/^[ \\t]*\\d+\\.[ \\t]+(?=\\*{0,2}(?:Source|Published|Category|Relevance Score|Summary|Suggested Action|Read More))/gm, '- ');\ntext = text.replace(/^- (\\*\\*(?:Source|Published|Category|Relevance Score|Summary|Suggested Action|Read More):)/gm, '\u2022 $1');\n\nconst now = new Date().toLocaleString('[YOUR_LOCALE]', {\n  timeZone: '[YOUR_TIMEZONE]',\n  dateStyle: 'full',\n  timeStyle: 'short'\n});\nconst header = `\ud83d\udee1\ufe0f **Threat Intel Digest \u2014 ${now}**\\n${'\u2500'.repeat(40)}\\n`;\nconst itemBlocks = text.split(/\\n(?=\\d+\\. \\*\\*)/).filter(b => b.trim());\nconst chunks = [];\nlet current = header;\nfor (const block of itemBlocks) {\n  const trimmed = block.trim();\n  if ((current + '\\n' + trimmed).length > 1950) {\n    chunks.push(current.trim());\n    current = trimmed;\n  } else {\n    current += '\\n' + trimmed;\n  }\n}\nif (current.trim()) chunks.push(current.trim());\nreturn chunks.map((chunk, i) => ({\n  json: {\n    discord_message: chunk,\n    chunk_index: i + 1,\n    total_chunks: chunks.length\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5472,
+        112
+      ],
+      "id": "d0297f9b-bd85-4459-b3dd-23ba8a770577",
+      "name": "Format Discord (CJS)"
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst text = response.content[0].text;\n\nconst now = new Date().toLocaleString('[YOUR_LOCALE]', {\n  timeZone: '[YOUR_TIMEZONE]',\n  dateStyle: 'full',\n  timeStyle: 'short'\n});\n\nconst html = `<html><body style=\"font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px;\">\n<h2>\ud83d\udee1\ufe0f Threat Intel Digest \u2014 ${now}</h2>\n<hr>\n${text\n  .replace(/\\*\\*(.*?)\\*\\*/g, '<strong>$1</strong>')\n  .replace(/&lt;(https?:\\/\\/[^&]+)&gt;/g, '<a href=\"$1\">$1</a>')\n  .replace(/<(https?:\\/\\/[^\\s>]+)>/g, '<a href=\"$1\">$1</a>')\n  .replace(/\\n[ \\t]*- /g, '<br>&bull; ')\n  .replace(/\\n\\n(\\d+\\.)/g, '<br><br>$1')\n  .replace(/\\n/g, '<br>')\n}\n<br><br>\n<hr>\n<small>AI-Powered Threat Intel Digest</small>\n</body></html>`;\n\nreturn [{\n  json: {\n    email_subject: `Threat Intel Digest \u2014 ${now}`,\n    email_body: html\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5472,
+        -80
+      ],
+      "id": "cd168053-efd4-4c4b-82c6-f8a30ec6886f",
+      "name": "Format Gmail (CJS)"
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n's Continue on Error merges error info into the output item.\n// Feed name/url may survive on $json, or fall back to the SIB node reference.\nconst feedName = $json.name\n  || $('Loop Feeds (SIB)').item.json.name\n  || 'Unknown Feed';\n\nconst feedUrl = $json.url\n  || $('Loop Feeds (SIB)').item.json.url\n  || 'Unknown URL';\n\nconst error     = $json.error || {};\nconst statusCode = error.httpCode || error.statusCode || 'N/A';\nconst errMsg    = error.message || error.description || 'No error detail available';\n\nconst ts = new Date().toLocaleString('[YOUR_LOCALE]', {\n  timeZone: '[YOUR_TIMEZONE]',\n  dateStyle: 'short',\n  timeStyle: 'short'\n});\n\nconst discordContent =\n  `\u26a0\ufe0f **RSS Crawl Failure** \u2014 ${ts}\\n` +\n  `**Feed:** ${feedName}\\n` +\n  `**URL:** <${feedUrl}>\\n` +\n  `**Status:** \\`${statusCode}\\`\\n` +\n  `**Error:** ${errMsg}`;\n\nconst gmailSubject = `[TI Digest] RSS Feed Error: ${feedName} (${ts})`;\n\nconst gmailHtml =\n  `<h3 style=\"color:#cc0000;\">\u26a0\ufe0f RSS Feed Crawl Failure</h3>` +\n  `<table cellpadding=\"6\" style=\"border-collapse:collapse;font-family:monospace;\">` +\n  `<tr><td><b>Time</b></td><td>${ts}</td></tr>` +\n  `<tr><td><b>Feed</b></td><td>${feedName}</td></tr>` +\n  `<tr><td><b>URL</b></td><td><a href=\"${feedUrl}\">${feedUrl}</a></td></tr>` +\n  `<tr><td><b>Status Code</b></td><td>${statusCode}</td></tr>` +\n  `<tr><td><b>Error</b></td><td>${errMsg}</td></tr>` +\n  `</table>` +\n  `<p style=\"color:#888;font-size:0.85em;\">TI Digest \u2014 n8n error monitor</p>`;\n\nreturn [{\n  json: {\n    feedName,\n    feedUrl,\n    statusCode,\n    errMsg,\n    ts,\n    discordContent,\n    gmailSubject,\n    gmailHtml\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2112,
+        -416
+      ],
+      "id": "ee3ad19d-f2d7-4396-8e88-346657a49821",
+      "name": "Format Error Notification (CJS)"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://discordapp.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "content",
+              "value": "={{ $json.discordContent }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2336,
+        -320
+      ],
+      "id": "78fd3523-4bab-481e-8d22-adefee920c42",
+      "name": "Discord Error Webhook (HTTP)",
+      "onError": "continueRegularOutput",
+      "notes": "Discord Issue"
+    },
+    {
+      "parameters": {
+        "sendTo": "your-email@example.com",
+        "subject": "={{ $json.gmailSubject }}",
+        "message": "={{ $json.gmailHtml }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        2336,
+        -512
+      ],
+      "id": "6189a8b8-acc3-4142-ac26-52058b7322a6",
+      "name": "Gmail Error Notify (Gmail)",
+      "webhookId": "YOUR_WEBHOOK_CALLBACK_ID",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Gmail account"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "notes": "Gmail OAuth Issue"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Unpack Feed Fallback (CJS)\nconst items = $input.all();\nconst feedMeta = $('Loop Feeds (SIB)').item.json;\n\nif (items.length > 0 && !items[0].json.error) {\n  return items.map(item => ({\n    json: {\n      title:          item.json.title || '',\n      link:           item.json.link || '',\n      pubDate:        item.json.pubDate || item.json.isoDate || '',\n      isoDate:        item.json.isoDate || '',\n      contentSnippet: item.json.contentSnippet || item.json.content || '',\n      source:         item.json.source || feedMeta.name || 'Unknown',\n      feedTitle:      item.json.feedTitle || feedMeta.name || '',\n      feedUrl:        item.json.feedUrl || feedMeta.url || ''\n    }\n  }));\n}\n\nreturn [{\n  json: {\n    name:   feedMeta.name || 'Unknown',\n    url:    feedMeta.url || '',\n    source: feedMeta.name || 'Unknown',\n    error: {\n      message:  items[0]?.json?.error?.message || 'Feed returned no items or failed to parse',\n      httpCode: items[0]?.json?.error?.httpCode || 'N/A'\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        992,
+        -272
+      ],
+      "id": "21123c7d-888e-4227-ad2e-7b53da1ec005",
+      "name": "Unpack Feed Fallback (CJS)"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "1842c0d7-89ec-4fcb-bd64-09a53c060825",
+              "leftValue": "={{ $json.error?.message || '' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1216,
+        -272
+      ],
+      "id": "85d88905-bc89-4a08-bfac-ca3baead73e5",
+      "name": "Fallback Check (IF)"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1440,
+        -352
+      ],
+      "id": "ce5108ea-de64-4c18-99bb-e72141a6ada3",
+      "name": "HTTP Fallback Fetch (HTTP)",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  if (item.json.error) {\n    results.push(item);\n    continue;\n  }\n\n  const feedMeta = $('Loop Feeds (SIB)').item.json;\n  const rawXml = item.json.data || item.json.body || '';\n\n  if (!rawXml || rawXml.trim() === '') {\n    results.push({\n      json: {\n        ...feedMeta,\n        source: feedMeta.name || 'Unknown',\n        error: { message: 'Feed returned empty body', httpCode: 'N/A' }\n      }\n    });\n    continue;\n  }\n\n  try {\n    const isAtom = rawXml.includes('<entry');\n    const itemTag = isAtom ? 'entry' : 'item';\n    const itemRegex = new RegExp(`<${itemTag}[\\\\s>][\\\\s\\\\S]*?<\\\\/${itemTag}>`, 'gi');\n    const rawItems = rawXml.match(itemRegex) || [];\n\n    if (rawItems.length === 0) {\n      results.push({\n        json: {\n          ...feedMeta,\n          source: feedMeta.name || 'Unknown',\n          error: { message: 'Parsed 0 items from feed XML', httpCode: 'N/A' }\n        }\n      });\n      continue;\n    }\n\n    // Extract text content between tags, with CDATA support\n    const extract = (xml, tag) => {\n      const cdataMatch = xml.match(new RegExp(`<${tag}[^>]*><!\\\\[CDATA\\\\[([\\\\s\\\\S]*?)\\\\]\\\\]><\\\\/${tag}>`, 'i'));\n      if (cdataMatch) return cdataMatch[1].trim();\n      const plainMatch = xml.match(new RegExp(`<${tag}[^>]*>([\\\\s\\\\S]*?)<\\\\/${tag}>`, 'i'));\n      return plainMatch ? plainMatch[1].replace(/<[^>]+>/g, '').trim() : '';\n    };\n\n    // Separate link extractor \u2014 handles both RSS <link>url</link> and Atom <link href=\"url\"/>\n    const extractLink = (xml) => {\n      // Atom self-closing with href attribute\n      const atomHref = xml.match(/<link[^>]+href=[\"']([^\"']+)[\"'][^>]*\\/?>/i);\n      if (atomHref) return atomHref[1].trim();\n      // RSS plain content\n      const rssLink = xml.match(/<link[^>]*>([^<\\s][^<]*)<\\/link>/i);\n      if (rssLink) return rssLink[1].trim();\n      // Atom <id> fallback\n      const atomId = xml.match(/<id[^>]*>([^<]+)<\\/id>/i);\n      if (atomId) return atomId[1].trim();\n      return '';\n    };\n\n    for (const raw of rawItems) {\n      const link = extractLink(raw);\n      // Try all common date fields across RSS 2.0, Atom, and Dublin Core\n      const pubDate =\n        extract(raw, 'pubDate') ||\n        extract(raw, 'published') ||\n        extract(raw, 'updated') ||\n        extract(raw, 'dc:date') ||\n        extract(raw, 'date') ||\n        '';\n\n      results.push({\n        json: {\n          title:          extract(raw, 'title'),\n          link,\n          pubDate,\n          contentSnippet: extract(raw, 'description') || extract(raw, 'summary') || extract(raw, 'content'),\n          source:         feedMeta.name || 'Unknown',\n          feedTitle:      feedMeta.name,\n          feedUrl:        feedMeta.url\n        }\n      });\n    }\n  } catch (e) {\n    results.push({\n      json: {\n        ...feedMeta,\n        source: feedMeta.name || 'Unknown',\n        error: { message: `XML parse error: ${e.message}`, httpCode: 'N/A' }\n      }\n    });\n  }\n}\n\nreturn results;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1664,
+        -352
+      ],
+      "id": "33936bda-adf5-4f70-a799-a7863706ca10",
+      "name": "Parse RSS XML (CJS)"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "a80bda33-216e-4d06-aec6-f707b9dc8b78",
+              "leftValue": "={{ $json.error?.message || '' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1888,
+        -352
+      ],
+      "id": "dd450da9-45b4-4173-8bb8-30b02fe3cb61",
+      "name": "Final Error Check (IF)"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build Triage Payload (CJS)\nconst SNIPPET_LENGTH = 1000;\nconst MAX_ITEMS = 100;\n\nlet items = $input.first().json.items || [];\n\nif (items.length > MAX_ITEMS) {\n  console.warn(`Item count ${items.length} exceeded cap, truncating to ${MAX_ITEMS}`);\n  items = items\n    .sort((a, b) => new Date(b.pubDate || 0) - new Date(a.pubDate || 0))\n    .slice(0, MAX_ITEMS);\n}\n\nconst clean = (str) => {\n  if (!str) return '';\n  return String(str)\n    .replace(/<[^>]*>/g, ' ')\n    .replace(/&[a-z]+;/gi, ' ')\n    .replace(/\\s+/g, ' ')\n    .trim();\n};\n\nconst triageItems = items.map((item, idx) => ({\n  id: idx,\n  title: clean(item.title).slice(0, 200),\n  source: item.source || item.creator || 'Unknown',\n  snippet: clean(item.contentSnippet || item.content || item.description || '').slice(0, SNIPPET_LENGTH)\n}));\n\nconst systemPrompt = `You are triaging threat intelligence for a company operating [INSERT YOUR COMPANY INFO].\n\nAnalyst environment: [INSERT YOUR ANALYST ENVIRONMENT \u2014 e.g. OS, AD, cloud platform, EDR/XDR, SIEM].\n\nRegion focus: [INSERT YOUR MONITORED REGIONS \u2014 e.g. Southeast Asia, Europe, North America]. Senior practitioner \u2014 assume deep security knowledge.\n\nSCORING SCALE (0-10):\n\n- 10: Direct mention of [INSERT YOUR COMPANY NAME] or [INSERT YOUR PRODUCT/PLATFORM NAME]. Actively exploited zero-day in the exact analyst stack ([INSERT YOUR MONITORED VENDOR STACK \u2014 e.g. Fortinet, Ivanti, Palo Alto, VMware, Microsoft Exchange, Entra ID, Azure]).\n- 8-9: Nation-state actor campaigns against CNI sectors ([INSERT YOUR RELEVANT SECTORS \u2014 e.g. energy, utilities, ports, manufacturing]) in any monitored region. Ransomware groups hitting CNI targets in [INSERT YOUR MONITORED REGIONS]. ICS/SCADA/PLC vulnerabilities or active campaigns. Supply chain compromise affecting common security or IT tooling. PAM/privileged access compromise or bypass techniques.\n- 6-7: Windows/AD/[INSERT YOUR CLOUD PLATFORM] tradecraft (Kerberoasting, DCSync, ADCS abuse, OAuth abuse, device code phishing, AiTM, token theft, BYOVD). New ransomware TTPs or affiliate activity. AI/LLM security (prompt injection, MCP exploits, model poisoning). Container/Kubernetes escapes. Infostealer campaigns with active distribution, IOCs, traffic analysis, or malware samples. Phishing kits, PhaaS infrastructure, and phishing campaigns abusing legitimate platform notification systems. SIEM/XDR/SOAR detection bypass or evasion tradecraft.\n- 4-5: General DFIR and detection engineering content (Sigma, KQL, YARA, Sysmon, Velociraptor, KAPE, memory forensics). MITRE ATT&CK research. Linux/macOS attacks relevant to enterprise. Hardware and low-level attacks. Insider threat cases. CVEs in widely-deployed enterprise libraries with SSRF, auth bypass, or RCE primitives but no confirmed exploitation.\n- 2-3: Generic vulnerability disclosures without active exploitation. Security industry news. Tangential research.\n- 0-1: Vendor marketing, conference announcements, opinion pieces, consumer security advice, off-topic content.\n\nAUTO-ELEVATION RULES (apply first \u2014 these override base scale scores):\n- Any item directly mentioning [INSERT YOUR COMPANY NAME] or [INSERT YOUR PRODUCT/PLATFORM NAME] \u2192 score 10\n- Any actively exploited zero-day or CISA KEV addition \u2192 minimum score 8\n- Any ransomware or nation-state incident targeting CNI sectors ([INSERT YOUR RELEVANT SECTORS]) in [INSERT YOUR MONITORED REGIONS] \u2192 minimum score 9\n- Any nation-state or state-nexus threat actor campaign \u2014 including newly tracked clusters without established names \u2014 targeting CNI sectors or monitored regions \u2192 minimum score 8\n  (e.g. Volt Typhoon, Salt Typhoon, APT41, APT40, Mustang Panda, Sandworm, APT28, APT29, Lazarus, Kimsuky \u2014 treat named groups as examples, not as the boundary)\n- Any prompt injection, MCP exploit, or agentic AI compromise \u2192 minimum score 7\n- Any BYOVD, AiTM phishing, or supply chain attack on dev or security tooling \u2192 minimum score 7\n- Any PAM bypass, privileged credential theft, or lateral movement via PAM abuse \u2192 minimum score 7\n- Any CVE or exploit targeting your SIEM, XDR, or SOAR platforms ([INSERT YOUR SIEM/XDR/SOAR PLATFORMS \u2014 e.g. Microsoft Sentinel, Defender XDR, Cortex XDR, Rapid7 InsightIDR]) \u2192 minimum score 7\n- Any CVE affecting [INSERT YOUR CLOUD/PRODUCTIVITY STACK \u2014 e.g. M365, Azure, Entra ID, SharePoint, Teams, Defender, Windows AD] (regardless of exploitation status) \u2192 minimum score 5\n- Any CVE in HTTP client libraries with SSRF or cloud metadata exfiltration primitive \u2014 regardless of library name \u2192 minimum score 4; if [INSERT YOUR CLOUD PLATFORM \u2014 e.g. Azure] or cloud metadata is explicitly mentioned \u2192 minimum score 5\n  (e.g. Axios, requests, urllib, fetch, got, node-fetch \u2014 treat as examples, not as the boundary)\n- Any Log4j CVE regardless of variant or severity \u2192 minimum score 4\n- Detection evasion or obfuscation techniques with clear applicability to Sigma/KQL/YARA/Sysmon detection \u2192 minimum score 4\n- Any phishing campaign abusing legitimate platform notification infrastructure (email change alerts, push notifications, OAuth consent flows, Teams or Slack external invites) as a delivery mechanism \u2192 minimum score 4\n- Any infostealer campaign with accompanying IOCs, PCAP, traffic analysis, or malware samples \u2014 regardless of stealer family name \u2192 minimum score 5\n  (e.g. Lumma, Vidar, Atomic, AMOS, Shub, RedLine, Raccoon \u2014 treat as examples, not as the boundary)\n\nAUTO-DOWNGRADE RULES (apply before assigning scores in the 2\u20135 range):\n- Third-party OSS CVEs republished through MSRC with no Microsoft product dependency and no active exploitation (wolfSSL, libpng, OpenSC, AppArmor, Polkit, Handlebars.js, Forge, Picomatch, tar-rs, ONNX, Go stdlib, Ruby gems, Rust crates, Python stdlib) \u2192 score 2 unless CVSS \u2265 9.0 with confirmed active exploitation or explicit [INSERT YOUR CLOUD PLATFORM]/Windows runtime dependency\n- Geographic scope exclusively outside monitored regions ([INSERT YOUR MONITORED REGIONS]) with no transferable threat actor TTPs or techniques \u2192 score 2\n- Vendor event promotions, conference announcements, sponsored content, or partner posts \u2192 score 1\n- Weekly or monthly digest roundups and news aggregations without standalone threat detail \u2192 score 2\n- Financial crime (crypto theft, payment fraud, banking trojans) without infrastructure compromise or CNI targeting \u2192 score 2\n- Consumer-targeted phishing (generic credential harvest, fake invoice, standard brand impersonation) with no enterprise tradecraft, novel delivery mechanism, or PhaaS infrastructure \u2192 score 2\n\nCATEGORIES (use exactly one per item):\n\"OT/ICS\", \"IoT/Edge\", \"Energy/CNI\", \"AI/LLM\", \"Windows/AD\", \"Cloud/IaaS\", \"Ransomware\", \"Regional/Nation-State Actor\", \"Supply Chain\", \"Vulnerability\", \"Credential Theft\", \"Phishing/SocEng\", \"DFIR/Detection\", \"macOS\", \"Linux\", \"Container/K8s\", \"Hardware\", \"Crypto/Financial\", \"Insider Threat\", \"General\", \"Off-topic\"\n\nOUTPUT FORMAT:\nReturn ONLY a valid JSON array. No prose. No markdown code fences. No explanation.\n\n[{\"id\": 0, \"score\": 8, \"category\": \"Regional/Nation-State Actor\", \"reason\": \"Volt Typhoon TTPs vs US utilities \u2014 direct CNI parallel\"}]\n\nYou MUST return one entry per input item. Do not skip items. Do not invent items. Keep \"reason\" to one short sentence.`;\n\nconst userPrompt = `Score these ${triageItems.length} threat intelligence items:\\n\\n${JSON.stringify(triageItems, null, 2)}`;\n\nreturn [{\n  json: {\n    payload: JSON.stringify({\n      model: \"claude-haiku-4-5-20251001\",\n      max_tokens: 8192,\n      system: systemPrompt,\n      messages: [{ role: \"user\", content: userPrompt }]\n    }),\n    originalItems: items,\n    itemCount: triageItems.length\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4128,
+        -32
+      ],
+      "id": "c50f754e-040c-4662-9043-69a2448cf266",
+      "name": "Build Triage Payload (CJS)"
+    },
+    {
+      "parameters": {
+        "jsCode": "const THRESHOLD = 4; // was 3 beofre\nconst triageResponse = $input.first().json;\nconst buildPayloadNode = $('Build Triage Payload (CJS)').first().json;\nconst originalItems = buildPayloadNode.originalItems || [];\n\nlet responseText = '';\ntry {\n  responseText = triageResponse.content[0].text;\n} catch (e) {\n  throw new Error(`Claude triage response malformed: ${JSON.stringify(triageResponse).slice(0, 500)}`);\n}\n\nresponseText = responseText\n  .replace(/```json\\s*/gi, '')\n  .replace(/```\\s*/g, '')\n  .trim();\n\nlet scores = [];\ntry {\n  scores = JSON.parse(responseText);\n} catch (e) {\n  throw new Error(`Failed to parse triage JSON: ${e.message}\\nRaw: ${responseText.slice(0, 1000)}`);\n}\n\nif (!Array.isArray(scores)) {\n  throw new Error(`Triage response is not an array: ${typeof scores}`);\n}\n\nconst scoreMap = {};\nfor (const s of scores) {\n  if (typeof s.id === 'number') {\n    scoreMap[s.id] = s;\n  }\n}\n\nconst runTimestamp = new Date().toISOString();\nconst survivors = [];\nconst rejected = [];\nconst unscored = [];\n\nfor (let i = 0; i < originalItems.length; i++) {\n  const score = scoreMap[i];\n  const base = {\n    runTimestamp,\n    feedName:       originalItems[i].source || originalItems[i].feedName || originalItems[i].feedSource || '',\n    title:          originalItems[i].title || '',\n    link:           originalItems[i].link || '',\n    pubDate:        originalItems[i].pubDate || '',\n    contentSnippet: (originalItems[i].contentSnippet || '').slice(0, 300),\n  };\n\n  if (!score) {\n    unscored.push({ ...base, triageScore: null, triageCategory: 'UNSCORED', triageReason: 'No Claude response for this index', verdict: 'UNSCORED' });\n    continue;\n  }\n\n  if (score.score >= THRESHOLD) {\n    survivors.push({\n      ...originalItems[i],\n      triageScore:    score.score,\n      triageCategory: score.category || 'Unknown',\n      triageReason:   score.reason || ''\n    });\n  } else {\n    rejected.push({ ...base, triageScore: score.score, triageCategory: score.category || 'Unknown', triageReason: score.reason || '', verdict: 'REJECTED' });\n  }\n}\n\nsurvivors.sort((a, b) => b.triageScore - a.triageScore);\n\nconst survivorRows = survivors.map(s => ({\n  runTimestamp,\n  feedName:       s.source || s.feedName || s.feedSource || '',\n  title:          s.title || '',\n  link:           s.link || '',\n  pubDate:        s.pubDate || '',\n  contentSnippet: (s.contentSnippet || '').slice(0, 300),\n  triageScore:    s.triageScore,\n  triageCategory: s.triageCategory,\n  triageReason:   s.triageReason,\n  verdict:        'PASSED'\n}));\n\nconst auditRows = [...survivorRows, ...rejected, ...unscored];\n\nconsole.log(`Triage: ${originalItems.length} in \u2192 ${survivors.length} passed, ${rejected.length} rejected, ${unscored.length} unscored`);\n\nif (survivors.length === 0) {\n  return [{\n    json: {\n      items: [{\n        title: \"No relevant items in this window\",\n        link: \"\",\n        pubDate: new Date().toISOString(),\n        source: \"TI Digest System\",\n        contentSnippet: `Pipeline ran. Triaged ${originalItems.length} items, none at or above threshold ${THRESHOLD}.`,\n        triageScore: 0,\n        triageCategory: \"System\",\n        triageReason: \"Placeholder\"\n      }],\n      isEmpty: true,\n      triagedCount: originalItems.length,\n      auditRows\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    items: survivors,\n    isEmpty: false,\n    triagedCount: originalItems.length,\n    survivorCount: survivors.length,\n    auditRows\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4800,
+        -32
+      ],
+      "id": "f41f2013-f2e6-44c2-b8de-c0fb8d0133f3",
+      "name": "Parse + Filter (CJS)"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.payload }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 120000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        4352,
+        -32
+      ],
+      "id": "f1a2c529-2504-4f0d-880e-05540b625f5a",
+      "name": "Claude Triage (HTTP)",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Claude API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Decode Claude Response (CJS)\n// Sits between Claude Triage HTTP and Parse Filter\n// Normalises stream objects, header-wrapped responses, and plain JSON\n\nconst raw = $input.first().json;\n\n// Shape 1: Normal \u2014 already parsed JSON with content array\nif (raw?.content?.[0]?.text && typeof raw.content[0].text === 'string') {\n  return [{ json: raw }];\n}\n\n// Shape 2: Include Response Headers was ON \u2014 body is nested\nif (raw?.body) {\n  const body = raw.body;\n\n  // Body is already parsed\n  if (body?.content?.[0]?.text) {\n    return [{ json: body }];\n  }\n\n  // Body is a buffer\n  if (body?.type === 'Buffer' && Array.isArray(body.data)) {\n    const decoded = JSON.parse(Buffer.from(body.data).toString('utf8'));\n    return [{ json: decoded }];\n  }\n\n  // Body is a stream object\n  if (body?._readableState?.buffer) {\n    const chunks = body._readableState.buffer;\n    const buffers = [];\n    for (const chunk of chunks) {\n      if (chunk?.type === 'Buffer' && Array.isArray(chunk.data)) {\n        buffers.push(Buffer.from(chunk.data));\n      } else if (Buffer.isBuffer(chunk)) {\n        buffers.push(chunk);\n      }\n    }\n    const decoded = JSON.parse(Buffer.concat(buffers).toString('utf8'));\n    return [{ json: decoded }];\n  }\n}\n\n// Shape 3: Top-level stream object (no header wrapping)\nif (raw?._readableState?.buffer) {\n  const chunks = raw._readableState.buffer;\n  const buffers = [];\n  for (const chunk of chunks) {\n    if (chunk?.type === 'Buffer' && Array.isArray(chunk.data)) {\n      buffers.push(Buffer.from(chunk.data));\n    } else if (Buffer.isBuffer(chunk)) {\n      buffers.push(chunk);\n    }\n  }\n  const decoded = JSON.parse(Buffer.concat(buffers).toString('utf8'));\n  return [{ json: decoded }];\n}\n\n// Shape 4: Top-level buffer\nif (raw?.type === 'Buffer' && Array.isArray(raw.data)) {\n  const decoded = JSON.parse(Buffer.from(raw.data).toString('utf8'));\n  return [{ json: decoded }];\n}\n\n// Unrecognised \u2014 pass through with diagnostic info\nthrow new Error(`Decode failed. Keys: ${Object.keys(raw || {}).join(', ')} | Sample: ${JSON.stringify(raw).slice(0, 300)}`);"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4576,
+        -32
+      ],
+      "id": "f8da3d75-0f8d-4d97-80f8-9d49eb5952ac",
+      "name": "Decode Claude Response (CJS)"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        5696,
+        112
+      ],
+      "id": "99e1cd47-6e4e-486a-aff2-2d3e8c76c754",
+      "name": "Split In Batches (SIB)"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/YOUR_SPREADSHEET_ID/edit",
+          "mode": "url",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_SPREADSHEET_ID/edit"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Triage Audit",
+          "mode": "list",
+          "cachedResultName": "triage_audit",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/your-spreadsheet-id-here/edit"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "runTimestamp": "={{ $json.runTimestamp }}",
+            "feedName": "={{ $json.feedName }}",
+            "title": "={{ $json.title }}",
+            "verdict": "={{ $json.verdict }}",
+            "triageScore": "={{ $json.triageScore }}",
+            "triageReason": "={{ $json.triageReason }}",
+            "triageCategory": "={{ $json.triageCategory }}",
+            "link": "={{ $json.link }}",
+            "pubDate": "={{ $json.pubDate }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "runTimestamp",
+              "displayName": "runTimestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "feedName",
+              "displayName": "feedName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "verdict",
+              "displayName": "verdict",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "triageScore",
+              "displayName": "triageScore",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "triageReason",
+              "displayName": "triageReason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "triageCategory",
+              "displayName": "triageCategory",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "link",
+              "displayName": "link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "pubDate",
+              "displayName": "pubDate",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        5248,
+        -128
+      ],
+      "id": "7b911e11-f454-4e90-95f0-139f514b145d",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "notes": "Excel Issue"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst rows = input.auditRows || [];\n\nif (rows.length === 0) return [];  // empty array = no items, downstream nodes don't fire\n\nreturn rows.map(r => ({ json: r }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5024,
+        -128
+      ],
+      "id": "e7620c36-6ed5-4679-a105-5d5c1ed57d5f",
+      "name": "Audit Rows (CJS)"
+    },
+    {
+      "parameters": {
+        "jsCode": "//Filter pubDate 12h\nconst resolveSource = (item) => {\n  const link = item.link || '';\n  if (link.includes('thehackernews.com'))            return 'The Hacker News';\n  if (link.includes('talosintelligence.com'))        return 'Cisco Talos';\n  if (link.includes('krebsonsecurity.com'))          return 'Krebs on Security';\n  if (link.includes('rapid7.com'))                   return 'Rapid7 Blog';\n  if (link.includes('darkreading.com'))              return 'Dark Reading';\n  if (link.includes('bankinfosecurity.com'))         return 'BankInfoSecurity';\n  if (link.includes('unit42.paloaltonetworks.com'))  return 'Palo Alto Unit 42';\n  if (link.includes('malwarebytes.com'))             return 'Malwarebytes Blog';\n  if (link.includes('microsoft.com/en-us/security')) return 'Microsoft Security Blog';\n  if (link.includes('isc.sans.edu'))                 return 'SANS ISC';\n  if (link.includes('fortiguard.com'))               return 'Fortiguard IR';\n  if (link.includes('recordedfuture.com'))           return 'Recorded Future';\n  if (link.includes('malware-traffic-analysis.net')) return 'Malware Traffic Analysis';\nif (link.includes('cisa.gov'))                     return 'CISA ICS Advisories';\n  if (link.includes('bleepingcomputer.com'))         return 'Bleeping Computer';\n  if (link.includes('thedfirreport.com'))            return 'The DFIR Report';\n  if (link.includes('blogs.jpcert.or.jp'))           return 'JPCERT/CC';\n  if (link.includes('elastic.co'))                   return 'Elastic Security Labs';\n  if (link.includes('crowdstrike.com'))              return 'CrowdStrike Blog';\n  if (link.includes('sentinelone.com'))              return 'SentinelOne Labs';\n  if (link.includes('redcanary.com'))                return 'Red Canary';\n  if (link.includes('feedburner.com'))               return 'Cisco Talos';\n  return 'Unknown';\n};\n\nconst now = new Date();\nconst HOURS = 12; // \u2190 testing: 1h. Production: change to 12\nconst cutoff = new Date(now.getTime() - HOURS * 60 * 60 * 1000);\n\nreturn $input.all().filter(item => {\n  if (item.json.error) return false;\n\n  const pub = item.json.pubDate || item.json.isoDate || item.json.date;\n\n  // No date field = pass through and let Claude triage decide relevance\n  // Dropping dateless items here causes BankInfoSecurity/Fortiguard to vanish silently\n  if (!pub || pub.trim() === '') return true;\n\n  const parsed = new Date(pub);\n  // Unparseable date string = pass through rather than silently drop\n  if (isNaN(parsed.getTime())) return true;\n\n  return parsed >= cutoff;\n\n}).map(item => ({\n  json: {\n    ...item.json,\n    feedName: resolveSource(item.json)\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3456,
+        -32
+      ],
+      "id": "83624632-5600-47cb-8ab5-9d6e8520bd40",
+      "name": "Filter pubDate 12h (CJS)"
+    },
+    {
+      "parameters": {
+        "amount": 2
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        6144,
+        112
+      ],
+      "id": "6780f18f-8822-4639-aeb5-edc67532e06e",
+      "name": "Delay 2s",
+      "webhookId": "YOUR_WEBHOOK_CALLBACK_ID"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build Claude Payload (CJS)\nconst formatPubDate = (item) => {\n  const raw = item.pubDate || item.isoDate || item.date || '';\n  if (!raw) return 'Unknown date';\n  try {\n    return new Date(raw).toLocaleString('[INSERT YOUR LOCALE \u2014 e.g. [YOUR_LOCALE]]', {\n      timeZone: '[INSERT YOUR TIMEZONE \u2014 e.g. [YOUR_TIMEZONE]]',\n      day: '2-digit',\n      month: 'short',\n      year: 'numeric',\n      hour: '2-digit',\n      minute: '2-digit',\n      hour12: false\n    }) + ' [INSERT YOUR TIMEZONE ABBREVIATION \u2014 e.g. UTC]';\n  } catch {\n    return raw;\n  }\n};\n\nconst items = $input.first().json.items;\n\nconst prompt = `You are a senior threat intelligence analyst. Analyze the following RSS feed items.\nEach item has been pre-scored for relevance to [INSERT YOUR ROLE AND COMPANY INFO \u2014 e.g. a security analyst at your organisation]. Use the triageScore as the Relevance Score value exactly. Do not adjust it up or down under any circumstances.\nRespond in EXACTLY this format for every item. No introduction, no summary, no recommendations, no section headers. ONLY the numbered list. Every field must use a dash prefix. No mixing of bullet styles.\n1. **[Title]**\n- **Source:** [source]\n- **Published:** [pubDate]\n- **Category:** [triageCategory]\n- **Relevance Score:** [X/10]\n- **Summary:** [Two sentences max]\n- **Suggested Action:** [Monitor / Investigate / Patch / No action] \u2014 [one sentence]\n- **Read More:** <[link]>\nExample of correct output for one item:\n1. **Critical RCE Vulnerability in FortiGate Actively Exploited**\n- **Source:** Bleeping Computer\n- **Published:** 13 May 2026, 12:00 [INSERT YOUR TIMEZONE ABBREVIATION]\n- **Category:** Vulnerability\n- **Relevance Score:** 9/10\n- **Summary:** A critical RCE flaw in FortiGate firewalls is being actively exploited in the wild. Threat actors are deploying webshells post-exploitation across enterprise targets.\n- **Suggested Action:** Patch \u2014 apply Fortinet advisory patches immediately and hunt for webshell indicators on perimeter devices.\n- **Read More:** <https://www.bleepingcomputer.com/example>\nRules:\n- Sort by relevance score descending\n- Output ONLY the numbered list \u2014 nothing before it, nothing after it\n- Every item MUST include all fields including Read More link\n- ONLY the title line carries a number (e.g. 1. **Title**) \u2014 ALL other fields use ONLY a dash ( - ) prefix, never a number\n- Use ONLY dash ( - ) prefix for ALL fields on ALL items, never bullet points ( \u2022 ) or numbers\n- Never omit any field\n- Do NOT indent field lines \u2014 every dash must start at the beginning of the line with no leading spaces\n- Format ALL URLs with angle brackets exactly like this: <https://example.com> \u2014 never use markdown link format\n- If the Items array is empty or contains only items with triageScore 0, output exactly this and nothing else: No relevant items passed the triage threshold in this window.\nItems:\n${JSON.stringify(items.map(i => ({\n  title: i.title,\n  link: i.link,\n  source: i.feedName || i.source || 'Unknown',\n  pubDate: formatPubDate(i),\n  snippet: (i.contentSnippet || i.content || '').slice(0, 500),\n  triageScore: i.triageScore,\n  triageCategory: i.triageCategory,\n  triageReason: i.triageReason\n})))}`;\n\nreturn [{\n  json: {\n    payload: JSON.stringify({\n      model: \"claude-haiku-4-5-20251001\",\n      max_tokens: 10000,\n      messages: [{ role: \"user\", content: prompt }]\n    })\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5024,
+        64
+      ],
+      "id": "c3cba325-b863-4f4a-8a18-51667c7c3d37",
+      "name": "Build Claude Summary Payload (CJS)"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Accumulate Items (CJS)\nconst staticData = $getWorkflowStaticData('global');\nif (!staticData.accumulatedItems) staticData.accumulatedItems = [];\nif (!staticData.feedsProcessed) staticData.feedsProcessed = 0;\n\nconst validItems = $input.all()\n  .filter(i => !i.json.error && !i.json.signal && (i.json.title || i.json.link))\n  .map(i => i.json);\n\nstaticData.accumulatedItems.push(...validItems);\nstaticData.feedsProcessed++;\n\nconst allDone = staticData.feedsProcessed >= (staticData.totalFeeds || 21);\n\nreturn [{ json: { signal: 'feedComplete', allDone } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2560,
+        -176
+      ],
+      "id": "9eade659-7457-4432-9a47-3d704f9d96cc",
+      "name": "Accumulate Items (CJS)"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Read Accumulated Items (CJS)\nconst staticData = $getWorkflowStaticData('global');\nconst items = staticData.accumulatedItems || [];\nstaticData.accumulatedItems = [];\nstaticData.feedsProcessed = 0;\n\nif (items.length === 0) {\n  return [{ json: { error: 'No items collected from any feed' } }];\n}\n\nreturn items.map(item => ({ json: item }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3232,
+        -32
+      ],
+      "id": "1fedd61d-0917-41a4-8f92-c6a3e3d76503",
+      "name": "Read Accumulated Items (CJS)"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Clear Accumulator (CJS)\nconst staticData = $getWorkflowStaticData('global');\nstaticData.accumulatedItems = [];\nstaticData.feedsProcessed = 0;\nstaticData.totalFeeds = $input.first().json.feeds.length;\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        96,
+        64
+      ],
+      "id": "0b0d138d-d72d-42cb-b14a-52d6910d1e01",
+      "name": "Clear Accumulator (CJS)"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c83351d2-dabc-4643-8a78-3570a74ff1c0",
+              "leftValue": "={{ $json.allDone }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        3008,
+        -32
+      ],
+      "id": "05dcf32b-7f5e-4662-8887-fd66d1b2798e",
+      "name": "All Feeds Done? (IF)"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "RSS Feed List (EF)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Feed List (EF)": {
+      "main": [
+        [
+          {
+            "node": "Clear Accumulator (CJS)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Feed Array (CJS)": {
+      "main": [
+        [
+          {
+            "node": "Loop Feeds (SIB)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Feeds (SIB)": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Fetch RSS Items (RSSR)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch RSS Items (RSSR)": {
+      "main": [
+        [
+          {
+            "node": "Unpack Feed Fallback (CJS)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deduplicate by Link (RD)": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Items": {
+      "main": [
+        [
+          {
+            "node": "Build Triage Payload (CJS)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude Summarize (HTTP)": {
+      "main": [
+        [
+          {
+            "node": "Format Discord (CJS)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Format Gmail (CJS)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Discord Webhook (HTTP)": {
+      "main": [
+        [
+          {
+            "node": "Delay 2s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        []
+      ]
+    },
+    "Format Discord (CJS)": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches (SIB)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Gmail (CJS)": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rate Limit Delay (W)": {
+      "main": [
+        [
+          {
+            "node": "All Feeds Done? (IF)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Error Notification (CJS)": {
+      "main": [
+        [
+          {
+            "node": "Gmail Error Notify (Gmail)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Discord Error Webhook (HTTP)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Unpack Feed Fallback (CJS)": {
+      "main": [
+        [
+          {
+            "node": "Fallback Check (IF)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fallback Check (IF)": {
+      "main": [
+        [
+          {
+            "node": "HTTP Fallback Fetch (HTTP)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Accumulate Items (CJS)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Fallback Fetch (HTTP)": {
+      "main": [
+        [
+          {
+            "node": "Parse RSS XML (CJS)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse RSS XML (CJS)": {
+      "main": [
+        [
+          {
+            "node": "Final Error Check (IF)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Final Error Check (IF)": {
+      "main": [
+        [
+          {
+            "node": "Format Error Notification (CJS)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Accumulate Items (CJS)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Triage Payload (CJS)": {
+      "main": [
+        [
+          {
+            "node": "Claude Triage (HTTP)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse + Filter (CJS)": {
+      "main": [
+        [
+          {
+            "node": "Audit Rows (CJS)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Build Claude Summary Payload (CJS)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude Triage (HTTP)": {
+      "main": [
+        [
+          {
+            "node": "Decode Claude Response (CJS)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decode Claude Response (CJS)": {
+      "main": [
+        [
+          {
+            "node": "Parse + Filter (CJS)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split In Batches (SIB)": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Discord Webhook (HTTP)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Audit Rows (CJS)": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter pubDate 12h (CJS)": {
+      "main": [
+        [
+          {
+            "node": "Deduplicate by Link (RD)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delay 2s": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches (SIB)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Claude Summary Payload (CJS)": {
+      "main": [
+        [
+          {
+            "node": "Claude Summarize (HTTP)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Accumulate Items (CJS)": {
+      "main": [
+        [
+          {
+            "node": "Rate Limit Delay (W)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Accumulated Items (CJS)": {
+      "main": [
+        [
+          {
+            "node": "Filter pubDate 12h (CJS)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Discord Error Webhook (HTTP)": {
+      "main": [
+        [
+          {
+            "node": "Accumulate Items (CJS)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clear Accumulator (CJS)": {
+      "main": [
+        [
+          {
+            "node": "Split Feed Array (CJS)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "All Feeds Done? (IF)": {
+      "main": [
+        [
+          {
+            "node": "Read Accumulated Items (CJS)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Feeds (SIB)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "YOUR_VERSION_ID",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "YOUR_INSTANCE_ID"
+  },
+  "id": "YOUR_WORKFLOW_ID",
+  "tags": []
+}
