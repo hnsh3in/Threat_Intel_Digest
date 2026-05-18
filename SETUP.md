@@ -9,7 +9,7 @@ Step-by-step deployment and configuration for the Threat Intel Digest pipeline.
 ### AWS Lightsail (recommended)
 
 - Instance: Ubuntu 24.04 LTS, AWS region of your choice
-- Plan: $7/month — 1GB RAM, 2 vCPUs, 40GB SSD
+- Plan: $7/month - 1GB RAM, 2 vCPUs, 40GB SSD
 - Add a static IP and attach it to the instance
 - Add 2GB swap to prevent OOM during large RSS fetch runs:
 
@@ -47,7 +47,7 @@ docker run -d --name n8n --restart unless-stopped \
   n8nio/n8n
 ```
 
-**Log rotation** — add to `/etc/docker/daemon.json` before starting the container:
+**Log rotation** - add to `/etc/docker/daemon.json` before starting the container:
 
 ```json
 {
@@ -68,7 +68,7 @@ Create these four credentials in n8n before importing the workflow.
 ### Claude API Key
 
 - Type: **Header Auth**
-- Name: `Claude API Key` (must match this exactly — the workflow references it by name)
+- Name: `Claude API Key` (must match this exactly - the workflow references it by name)
 - Header Name: `x-api-key`
 - Header Value: your Anthropic API key from [console.anthropic.com](https://console.anthropic.com)
 
@@ -80,7 +80,7 @@ Create these four credentials in n8n before importing the workflow.
 1. Go to [Google Cloud Console](https://console.cloud.google.com)
 2. Create a project, enable the Gmail API
 3. OAuth consent screen: External, add your email as a test user
-4. **Publish the app to production** — on the OAuth consent screen page click **Publish App** and confirm. Apps left in test mode issue refresh tokens that expire after 7 days, which will break the workflow silently. Publishing removes that limit. No Google review is required for personal use since you are only authorising your own account.
+4. **Publish the app to production** - on the OAuth consent screen page click **Publish App** and confirm. Apps left in test mode issue refresh tokens that expire after 7 days, which will break the workflow silently. Publishing removes that limit. No Google review is required for personal use since you are only authorising your own account.
 5. Create OAuth 2.0 credentials (Web application)
 6. Add redirect URI: `http://localhost:5678/rest/oauth2-credential/callback`
 7. In n8n: create a **Gmail OAuth2 API** credential, paste Client ID and Secret, then click Connect
@@ -91,7 +91,7 @@ Same Google Cloud project. Enable the Google Sheets API. Create a second OAuth2 
 
 ### Discord Webhook
 
-In your Discord server: Server Settings > Integrations > Webhooks > New Webhook. Copy the webhook URL — you will paste it into the workflow after import (see step 5 below).
+In your Discord server: Server Settings > Integrations > Webhooks > New Webhook. Copy the webhook URL - you will paste it into the workflow after import (see step 5 below).
 
 ---
 
@@ -131,15 +131,15 @@ These values are sanitised in the export and must be updated manually after impo
 
 Open `Build Triage Payload (CJS)`. The system prompt contains placeholder brackets for:
 
-- `[INSERT YOUR COMPANY INFO]` — brief description of your organisation and sector
-- `[INSERT YOUR ANALYST ENVIRONMENT]` — OS, AD, cloud platform, EDR/XDR, SIEM
-- `[INSERT YOUR MONITORED REGIONS]` — e.g. APAC, EU, US, CN
-- `[INSERT YOUR COMPANY NAME]` and `[INSERT YOUR PRODUCT/PLATFORM NAME]` — auto-elevates to score 10
-- `[INSERT YOUR MONITORED VENDOR STACK]` — e.g. Fortinet, Ivanti, Palo Alto, VMware
-- `[INSERT YOUR RELEVANT SECTORS]` — e.g. energy, utilities, ports, manufacturing, banking
-- `[INSERT YOUR SIEM/XDR/SOAR PLATFORMS]` — e.g. Microsoft Sentinel, Defender XDR
-- `[INSERT YOUR CLOUD/PRODUCTIVITY STACK]` — e.g. M365, Azure, Entra ID
-- `[INSERT YOUR CLOUD PLATFORM]` — e.g. Azure, AWS, GoogleCloud
+- `[INSERT YOUR COMPANY INFO]` - brief description of your organisation and sector
+- `[INSERT YOUR ANALYST ENVIRONMENT]` - OS, AD, cloud platform, EDR/XDR, SIEM
+- `[INSERT YOUR MONITORED REGIONS]` - e.g. APAC, EU, US, CN
+- `[INSERT YOUR COMPANY NAME]` and `[INSERT YOUR PRODUCT/PLATFORM NAME]` - auto-elevates to score 10
+- `[INSERT YOUR MONITORED VENDOR STACK]` - e.g. Fortinet, Ivanti, Palo Alto, VMware
+- `[INSERT YOUR RELEVANT SECTORS]` - e.g. energy, utilities, ports, manufacturing, banking
+- `[INSERT YOUR SIEM/XDR/SOAR PLATFORMS]` - e.g. Microsoft Sentinel, Defender XDR
+- `[INSERT YOUR CLOUD/PRODUCTIVITY STACK]` - e.g. M365, Azure, Entra ID
+- `[INSERT YOUR CLOUD PLATFORM]` - e.g. Azure, AWS, GoogleCloud
 
 The more precisely these match your actual stack and region, the more accurate the triage scores will be.
 
@@ -173,13 +173,13 @@ To test immediately without waiting for the schedule: click the **Execute Workfl
 
 | Issue | Cause | Workaround |
 |---|---|---|
-| IF node boolean condition fails | n8n v2.14.2 bug | Use String `is not empty` check — already applied in this workflow |
-| HTTP Request rejects expressions in JSON body | n8n re-parses JSON body mode | Raw mode with pre-stringified payload from Code node — already applied |
-| Discord messages out of order or 429 errors | Simultaneous webhook calls | SplitInBatches (batch: 1) + Wait 2s — already configured |
+| IF node boolean condition fails | n8n v2.14.2 bug | Use String `is not empty` check - already applied in this workflow |
+| HTTP Request rejects expressions in JSON body | n8n re-parses JSON body mode | Raw mode with pre-stringified payload from Code node - already applied |
+| Discord messages out of order or 429 errors | Simultaneous webhook calls | SplitInBatches (batch: 1) + Wait 2s - already configured |
 | All items blocked on repeated test runs | Dedup SQLite has seen all links | Temporarily bypass the `Deduplicate by Link` node during testing |
 | n8n instability during large RSS runs | CPU burst exhaustion on 1GB RAM | 2s Wait between feeds + 2GB swap |
 | Some feeds return zero items silently | n8n RSS node swallows errors | `Unpack Feed Fallback (CJS)` surfaces these before the IF check |
-| Bot-blocked feeds (BankInfoSecurity, Fortiguard) | Default User-Agent rejected | HTTP fallback with browser User-Agent — already configured |
+| Bot-blocked feeds (BankInfoSecurity, Fortiguard) | Default User-Agent rejected | HTTP fallback with browser User-Agent - already configured |
 | Claude Triage returns JSON wrapped in markdown fences | Haiku occasional format non-compliance | `Decode Claude Response (CJS)` strips fences before `JSON.parse` |
 
 ---

@@ -1,12 +1,125 @@
 # Threat Intel Digest
 
-An automated, AI-powered threat intelligence pipeline that runs twice daily on a self-hosted n8n instance. It ingests 21 security RSS feeds, triages every item with Claude (Anthropic), and delivers a scored, summarised digest to Discord and Gmail — filtered to what is actually relevant for your environment.
+A self-hosted threat intelligence pipeline that ingests 20+ security RSS feeds twice daily, runs every item through a Claude AI triage engine calibrated to your organisation's stack and region, and delivers a focused digest of only what is actually relevant - so you get the threats that matter, not an overwhelming wall of raw feed noise.
+
+Built on n8n (self-hosted, Docker), AWS Lightsail, and the Anthropic Claude API. Running costs under $12/month.
+
+---
+
+## What Makes This Different
+
+Most open threat intel pipelines stop at ingestion - a handful of RSS feeds passed into a summary prompt and pushed to a channel. This one is built to actually be useful day-to-day:
+
+- **20+ feeds** - coverage spans threat intel, DFIR, vendor research, ICS/OT, and national CERTs. High-signal, low-volume sources like The DFIR Report and Malware Traffic Analysis sit alongside high-volume feeds like Bleeping Computer and The Hacker News.
+- **Relevance filtering, not just summarisation** - every item is scored against your organisation, analyst stack, and monitored regions before a summary is written. Noise that doesn't apply to you never reaches your inbox.
+- **Two-stage design keeps costs low** - triage runs on titles and snippets only; the summarise call only fires on items that pass the threshold. You get broad coverage without paying to summarise everything.
+- **Fallback fetch for bot-blocked feeds** - feeds that reject default crawlers (BankInfoSecurity, Fortiguard) are retried with a browser User-Agent so they don't silently drop out.
+- **Built for calibration, not just set-and-forget** - the audit log records every verdict (`PASSED` / `REJECTED` / `UNSCORED`) with the score and reason. After two weeks you can see exactly where the threshold is too tight or too loose and adjust the prompt accordingly.
+- **Everything here is based on real data** - the scoring rubric, auto-elevation rules, and threshold have been tuned against actual pipeline runs. The sample outputs are real digest executions, not mock data.
+
+---
+
+## Features
+
+- **Dual-stage Claude pipeline** - triage scores every item first (cost-efficient); summarisation runs only on items that pass the threshold, keeping token usage low
+- **21 RSS feeds** across threat intel, DFIR, vendor research, ICS/OT, and national CERTs
+- **Relevance scoring (0-10)** - configurable for your stack and region
+- **Auto-elevation and auto-downgrade rules** in the triage prompt to catch edge cases (CISA KEV additions, nation-state campaigns against CNI, infostealer IOC drops, PhaaS infrastructure)
+- **Two-layer fallback fetch** - n8n RSS node first, HTTP fallback with browser `User-Agent` second (handles bot-blocked feeds like BankInfoSecurity and Fortiguard)
+- **Cross-execution deduplication** via n8n SQLite - items seen in previous runs are suppressed
+- **12-hour pubDate filter** per run, with pass-through for undated items to avoid silent feed drops
+- **Audit log** (Google Sheets) recording every item: `PASSED`, `REJECTED`, or `UNSCORED` - used for triage threshold calibration
+- **Error notification branch** - failed feeds alert to both Discord and Gmail with feed name, URL, HTTP status, and error detail
+- **Discord chunking** - output split at item boundaries, max 1,950 chars per message, 2s delay between webhook calls to prevent 429s and preserve order
+
+---
+
+## Estimated Running Cost
+
+| Component | Cost |
+|---|---|
+| Claude API (Haiku) | under $5/month at twice-daily cadence with 21 feeds |
+| AWS Lightsail | $7/month (1GB RAM, 2 vCPUs) |
+
+> **Note:** The Claude API cost above reflects this specific setup. Your actual cost will vary depending on how many feeds you configure and how much content passes the AI filtering stage — more feeds or a lower triage threshold means more items reaching the summarise call, which increases token usage.
+
+---
+
+## Sample Output
+
+**Email Digest**
+![Email Digest](samples/email_digest.png)
+
+**Audit Log - Feed Noise Analysis**
+![Feed Noise Analysis](samples/gsheet_feed_noise_analysis_chart.png)
+
+**Audit Log - Triage Data**
+![Triage Audit](samples/gsheet_triage_audit.png)
+
+For full output samples including error notifications, see the [samples/](./samples/) folder.
+
+---
+
+## Tech Stack
+
+| Component | Technology |
+|---|---|
+| Orchestration | [n8n](https://n8n.io/) (self-hosted, Docker) |
+| Hosting | AWS Lightsail - Ubuntu 24.04 LTS |
+| AI / Triage | Anthropic Claude API (`claude-haiku-4-5-20251001`) |
+| Notifications | Discord Webhook, Gmail (OAuth2) |
+| Audit Log | Google Sheets (OAuth2) |
+| Language | JavaScript (n8n Code nodes) |
+| Deduplication | n8n SQLite (built-in, cross-execution) |
+
+---
+
+## Prerequisites
+
+- AWS Lightsail instance (or any Linux VPS) - running on Ubuntu 24.04 LTS, 1GB RAM
+- n8n (self-hosted) - running on v2.14.2
+- Anthropic API key ([console.anthropic.com](https://console.anthropic.com)) - **set a monthly spend limit in Console > Settings > Limits before activating** to cap exposure if the key is ever compromised
+- Discord server with a webhook URL
+- Gmail account with OAuth2 configured in Google Cloud Console
+- Google Sheets (for the audit log)
+
+See [SETUP.md](./SETUP.md) for step-by-step configuration.
+
+---
+
+## Pipeline Stages
+
+### Stage 1 - Triage
+
+- Input: `title` + `contentSnippet` only (compact, cost-efficient)
+- Model: `claude-haiku-4-5-20251001`, max_tokens: 2000
+- Output: JSON array - `{ id, score, category, reason }`
+- Threshold: score >= 4 passes; score < 4 is rejected
+
+**Scoring rubric (0-10):**
+
+| Score | Criteria |
+|---|---|
+| 10 | Direct mention of your organisation or core platforms. Actively exploited zero-day in the exact analyst stack. |
+| 8-9 | Nation-state campaigns against CNI in your target region. Ransomware hitting CNI. Vulnerabilities in your sector's critical systems and operational platforms. Supply chain compromise of security or IT tooling. PAM/privileged access compromise. |
+| 6-7 | Windows/AD/Azure tradecraft (Kerberoasting, DCSync, ADCS, OAuth abuse, AiTM, BYOVD). New ransomware TTPs. AI/LLM attacks (prompt injection, MCP exploits). Container/K8s escapes. Infostealer campaigns with IOCs. PhaaS infrastructure. SIEM/XDR evasion. |
+| 4-5 | DFIR and detection engineering (Sigma, KQL, YARA, Sysmon, Velociraptor). MITRE ATT&CK research. Linux/macOS enterprise attacks. CVEs with RCE/SSRF/auth bypass primitives, no confirmed exploitation. |
+| 2-3 | Generic vulnerability disclosures. Security industry news. Tangential research. |
+| 0-1 | Vendor marketing, conference announcements, consumer advice, off-topic content. |
+
+### Stage 2 - Summarise
+
+- Input: threshold-passing items only
+- Model: `claude-haiku-4-5-20251001`, max_tokens: 10000
+- Per-item output: Title, Source, Published, Category, Relevance Score, Summary (2 sentences), Suggested Action, Read More link
+- Sorted by relevance score descending
+- `triageScore` used verbatim - model is instructed not to adjust it
 
 ---
 
 ## How It Works
 
-Two Claude API calls per run — triage first, summarise only what passes.
+Two Claude API calls per run - triage first, summarise only what passes.
 
 ```mermaid
 flowchart TD
@@ -60,66 +173,6 @@ flowchart TD
 
 ---
 
-## Features
-
-- **Dual-stage Claude pipeline** — triage scores every item first (cost-efficient); summarisation runs only on items that pass the threshold, keeping token usage low
-- **21 RSS feeds** across threat intel, DFIR, vendor research, ICS/OT, and national CERTs
-- **Relevance scoring (0-10)** — configurable for your stack and region
-- **Auto-elevation and auto-downgrade rules** in the triage prompt to catch edge cases (CISA KEV additions, nation-state campaigns against CNI, infostealer IOC drops, PhaaS infrastructure)
-- **Two-layer fallback fetch** — n8n RSS node first, HTTP fallback with browser `User-Agent` second (handles bot-blocked feeds like BankInfoSecurity and Fortiguard)
-- **Cross-execution deduplication** via n8n SQLite — items seen in previous runs are suppressed
-- **12-hour pubDate filter** per run, with pass-through for undated items to avoid silent feed drops
-- **Audit log** (Google Sheets) recording every item: `PASSED`, `REJECTED`, or `UNSCORED` — used for triage threshold calibration
-- **Error notification branch** — failed feeds alert to both Discord and Gmail with feed name, URL, HTTP status, and error detail
-- **Discord chunking** — output split at item boundaries, max 1,950 chars per message, 2s delay between webhook calls to prevent 429s and preserve order
-- **All credentials and IDs sanitised** in the published workflow export
-
----
-
-## Tech Stack
-
-| Component | Technology |
-|---|---|
-| Orchestration | [n8n](https://n8n.io/) (self-hosted, Docker) |
-| Hosting | AWS Lightsail — Ubuntu 24.04 LTS |
-| AI / Triage | Anthropic Claude API (`claude-haiku-4-5-20251001`) |
-| Notifications | Discord Webhook, Gmail (OAuth2) |
-| Audit Log | Google Sheets (OAuth2) |
-| Language | JavaScript (n8n Code nodes) |
-| Deduplication | n8n SQLite (built-in, cross-execution) |
-
----
-
-## Pipeline Stages
-
-### Stage 1 — Triage
-
-- Input: `title` + `contentSnippet` only (compact, cost-efficient)
-- Model: `claude-haiku-4-5-20251001`, max_tokens: 2000
-- Output: JSON array — `{ id, score, category, reason }`
-- Threshold: score >= 4 passes; score < 4 is rejected
-
-**Scoring rubric (0-10):**
-
-| Score | Criteria |
-|---|---|
-| 10 | Direct mention of your organisation or core platforms. Actively exploited zero-day in the exact analyst stack. |
-| 8-9 | Nation-state campaigns against CNI in your target region. Ransomware hitting CNI. ICS/SCADA/PLC vulnerabilities. Supply chain compromise of security or IT tooling. PAM/privileged access compromise. |
-| 6-7 | Windows/AD/Azure tradecraft (Kerberoasting, DCSync, ADCS, OAuth abuse, AiTM, BYOVD). New ransomware TTPs. AI/LLM attacks (prompt injection, MCP exploits). Container/K8s escapes. Infostealer campaigns with IOCs. PhaaS infrastructure. SIEM/XDR evasion. |
-| 4-5 | DFIR and detection engineering (Sigma, KQL, YARA, Sysmon, Velociraptor). MITRE ATT&CK research. Linux/macOS enterprise attacks. CVEs with RCE/SSRF/auth bypass primitives, no confirmed exploitation. |
-| 2-3 | Generic vulnerability disclosures. Security industry news. Tangential research. |
-| 0-1 | Vendor marketing, conference announcements, consumer advice, off-topic content. |
-
-### Stage 2 — Summarise
-
-- Input: threshold-passing items only
-- Model: `claude-haiku-4-5-20251001`, max_tokens: 10000
-- Per-item output: Title, Source, Published, Category, Relevance Score, Summary (2 sentences), Suggested Action, Read More link
-- Sorted by relevance score descending
-- `triageScore` used verbatim — model is instructed not to adjust it
-
----
-
 ## RSS Feeds (21)
 
 | Source | Type |
@@ -156,35 +209,12 @@ Threat_Intel_Digest/
 ├── SETUP.md                           # Deployment and configuration guide
 ├── FEEDS.md                           # Feed list with notes
 ├── samples/                           # Sample output screenshots
-│   ├── README.md                      # Rendered sample gallery
 │   ├── discord_digest.png
-│   ├── discord_crawl_failure.png
-│   ├── email_digest.png
-│   ├── email_crawl_failure.png
 │   ├── gsheet_triage_audit.png
 │   └── gsheet_feed_noise_analysis_chart.png
 └── workflow/
     └── Threat_Intel_Digest_Published_v1.0.json   # n8n workflow export (sanitised)
 ```
-
----
-
-## Prerequisites
-
-- n8n (self-hosted) — tested on v2.14.2
-- Anthropic API key ([console.anthropic.com](https://console.anthropic.com)) — **set a monthly spend limit in Console > Settings > Limits before activating** to cap exposure if the key is ever compromised
-- Discord server with a webhook URL
-- Gmail account with OAuth2 configured in Google Cloud Console
-- Google Sheets (for the audit log)
-
-See [SETUP.md](./SETUP.md) for step-by-step configuration.
-
----
-
-## Estimated Running Cost
-
-- Claude API (Haiku): under $5/month at twice-daily cadence with 21 feeds
-- AWS Lightsail: $7/month (1GB RAM, 2 vCPUs)
 
 ---
 

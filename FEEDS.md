@@ -11,13 +11,13 @@
 | 1 | The Hacker News | `https://feeds.feedburner.com/TheHackersNews` | General | Reliable, high volume |
 | 2 | Rapid7 Blog | `https://blog.rapid7.com/rss` | Vulnerability research | |
 | 3 | Dark Reading | `https://www.darkreading.com/rss.xml` | Industry news | |
-| 4 | BankInfoSecurity | `https://www.bankinfosecurity.com/rssFeeds.php?type=main` | Financial / CNI | **Bot-blocked** — requires HTTP fallback with browser User-Agent |
+| 4 | BankInfoSecurity | `https://www.bankinfosecurity.com/rssFeeds.php?type=main` | Financial / CNI | **Bot-blocked** - requires HTTP fallback with browser User-Agent |
 | 5 | Palo Alto Unit 42 | `https://unit42.paloaltonetworks.com/feed` | Vendor threat research | |
 | 6 | Malwarebytes Blog | `https://blog.malwarebytes.com/feed/` | Malware analysis | |
 | 7 | Microsoft Security Blog | `https://www.microsoft.com/en-us/security/blog/feed/` | Microsoft stack | |
 | 8 | Krebs on Security | `https://krebsonsecurity.com/feed` | Investigative | |
 | 9 | SANS ISC | `https://isc.sans.edu/rssfeed.xml` | Daily indicators | Atom format |
-| 10 | Fortiguard IR | `https://www.fortiguard.com/rss/ir.xml` | Vendor IR | **Bot-blocked** — requires HTTP fallback with browser User-Agent |
+| 10 | Fortiguard IR | `https://www.fortiguard.com/rss/ir.xml` | Vendor IR | **Bot-blocked** - requires HTTP fallback with browser User-Agent |
 | 11 | Recorded Future | `https://www.recordedfuture.com/feed` | Threat intelligence | |
 | 12 | Cisco Talos | `https://feeds.feedburner.com/feedburner/Talos` | Vendor threat research | FeedBurner relay |
 | 13 | Malware Traffic Analysis | `https://www.malware-traffic-analysis.net/blog-entries.rss` | PCAP / traffic analysis | Infrequent posts, high signal |
@@ -39,7 +39,7 @@
    ```json
    { "name": "Source Name", "url": "https://example.com/feed.rss" }
    ```
-3. Update `totalFeeds` — the `Clear Accumulator (CJS)` node reads the feeds array length automatically, so no manual update is needed
+3. Update `totalFeeds` - the `Clear Accumulator (CJS)` node reads the feeds array length automatically, so no manual update is needed
 4. Add a domain mapping to `resolveSource()` in `Filter pubDate 12h (CJS)`:
    ```javascript
    if (link.includes('example.com')) return 'Source Name';
